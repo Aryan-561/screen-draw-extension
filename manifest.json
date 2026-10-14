@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Screen Draw & Laser",
+  "version": "1.0.0",
+  "description": "Draw, highlight, write text and use a laser pointer on any web page.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": { "default_title": "Toggle drawing (Alt+Shift+D)" },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["<all_urls>"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+D" },
+      "description": "Toggle drawing overlay"
+    }
+  }
+}
