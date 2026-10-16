@@ -11,7 +11,7 @@ A lightweight Chrome extension for drawing, highlighting, writing text, and poin
 - Laser pointer with adjustable fade duration and glow
 - Browse mode for scrolling and interacting with the page
 - Adjustable drawing color and size
-- Undo and clear controls
+- Undo, redo, and clear controls
 - Draggable toolbar with left/right edge docking
 - Toolbar position and laser settings saved locally
 - Canvas annotations stay aligned while the page scrolls
@@ -50,6 +50,7 @@ The toolbar can be moved by dragging its grip or an empty area. Drag it near the
 | `Alt+Shift+D` | Toggle the overlay |
 | `Esc` | Hide the overlay |
 | `Ctrl+Z` or `Cmd+Z` | Undo the most recent stroke or text annotation |
+| `Ctrl+Shift+Z`/`Cmd+Shift+Z` or `Ctrl+Y`/`Cmd+Y` | Redo the most recently undone stroke or text annotation |
 | `Enter` | Finish a text annotation |
 | `Shift+Enter` | Insert a line break in a text annotation |
 
