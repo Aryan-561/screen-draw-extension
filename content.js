@@ -2,7 +2,7 @@
   if (window.__screenDrawLoaded) return;
   window.__screenDrawLoaded = true;
 
-  const state = { open: false, tool: "pen", color: "#ff3b30", size: 4, laserFade: 800, laserGlow: 10, barPos: null, strokes: [], current: null };
+  const state = { open: false, tool: "pen", color: "#ff3b30", size: 4, laserFade: 800, laserGlow: 10, barPos: null, strokes: [], redo: [], current: null };
   let host, root, canvas, ctx, lcanvas, lctx, bar, textInput = null;
   let idleTimer = null, drag = null, pickerOpen = false, lastGlow = "";
   let trail = [], laserCur = null, laserPos = null, laserRunning = false, laserDown = false;  // trail = list of separate laser strokes
@@ -30,6 +30,8 @@
     #bar.dragging, #bar.dragging .grip { cursor: grabbing; }
     button { all: unset; cursor: pointer; padding: 6px 9px; border-radius: 8px; font-size: 16px; line-height: 1; }
     button:hover { background: rgba(255,255,255,.15); }
+    button:disabled { cursor: default; opacity: .35; }
+    button:disabled:hover { background: transparent; }
     button.active { background: #3b82f6; }
     input[type=color] { width: 30px; height: 30px; border: none; padding: 0; background: none; cursor: pointer; }
     input[type=range] { width: 80px; }
@@ -70,6 +72,7 @@
         </label>
         <span class="sep"></span>
         <button id="undo" title="Undo (Ctrl+Z)">↶</button>
+        <button id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
         <button id="clear" title="Clear all">🗑️</button>
         <button id="close" title="Hide (Esc)">✕</button>
       </div>`;
@@ -102,7 +105,14 @@
       });
     } catch (_) {}
     root.getElementById("undo").addEventListener("click", undo);
-    root.getElementById("clear").addEventListener("click", () => { commitText(); state.strokes = []; redraw(); });
+    root.getElementById("redo").addEventListener("click", redo);
+    root.getElementById("clear").addEventListener("click", () => {
+      commitText();
+      state.strokes = [];
+      state.redo = [];
+      updateHistoryButtons();
+      redraw();
+    });
     root.getElementById("close").addEventListener("click", hide);
 
     canvas.addEventListener("pointerdown", onDown);
@@ -179,6 +189,12 @@
     applyGlow();
     placeBar();
     trail = []; laserCur = null; laserPos = null; laserDown = false;
+  }
+
+  function updateHistoryButtons() {
+    if (!root) return;
+    root.getElementById("undo").disabled = state.strokes.length === 0;
+    root.getElementById("redo").disabled = state.redo.length === 0;
   }
 
   // ---------- toolbar: position + idle ----------
@@ -346,10 +362,25 @@
     if (laserDown) { laserDown = false; laserCur = null; laserPos = null; return; }  // dot vanishes, trail fades out
     if (!state.current) return;
     state.strokes.push(state.current);
+    state.redo = [];
     state.current = null;
+    updateHistoryButtons();
     redraw();
   }
-  function undo() { commitText(); state.strokes.pop(); redraw(); }
+  function undo() {
+    commitText();
+    if (!state.strokes.length) return;
+    state.redo.push(state.strokes.pop());
+    updateHistoryButtons();
+    redraw();
+  }
+  function redo() {
+    commitText();
+    if (!state.redo.length) return;
+    state.strokes.push(state.redo.pop());
+    updateHistoryButtons();
+    redraw();
+  }
 
   // ---------- text ----------
   function startText(cx, cy) {
@@ -375,7 +406,12 @@
     const ta = textInput; textInput = null;
     const text = ta.value;
     ta.remove();
-    if (text.trim()) { state.strokes.push({ type: "text", text, ...ta._meta }); redraw(); }
+    if (text.trim()) {
+      state.strokes.push({ type: "text", text, ...ta._meta });
+      state.redo = [];
+      updateHistoryButtons();
+      redraw();
+    }
   }
 
   // ---------- laser pointer (Excalidraw-style) ----------
@@ -452,9 +488,16 @@
   function onKey(e) {
     if (!state.open || textInput) return;
     if (e.key === "Escape") hide();
-    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+      e.preventDefault();
+      redo();
+    }
   }
-  function show() { if (!host) build(); host.style.display = "block"; state.open = true; placeBar(); scheduleIdle(2500); }
+  function show() { if (!host) build(); host.style.display = "block"; state.open = true; updateHistoryButtons(); placeBar(); scheduleIdle(2500); }
   function hide() { commitText(); if (host) host.style.display = "none"; state.open = false; }
 
   chrome.runtime.onMessage.addListener(msg => {
